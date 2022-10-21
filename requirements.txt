@@ -1,0 +1,6 @@
+flask
+flask-restplus
+flask_cors
+werkzeug==0.16.1
+markupsafe==2.0.1
+elasticsearch
