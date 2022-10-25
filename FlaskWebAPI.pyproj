@@ -30,6 +30,7 @@
     <Compile Include="app.py" />
   </ItemGroup>
   <ItemGroup>
+    <Content Include="config.ini" />
     <Content Include="requirements.txt" />
   </ItemGroup>
   <ItemGroup>

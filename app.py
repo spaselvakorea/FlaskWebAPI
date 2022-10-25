@@ -3,8 +3,10 @@ from flask_cors import CORS
 from flask_restplus import Api, Resource, fields
 from datetime import datetime
 from elasticsearch import Elasticsearch
-
+import configparser
 import json
+import io
+
 
 app = Flask(__name__)
 CORS(app)
@@ -12,7 +14,10 @@ api = Api(app, version='1.0', title='PIOLINK Elasticsearch API',
     description='PIOLINK Elasticsearch API for dashboards',
 )
 
-es = Elasticsearch('http://125.7.199.174:9200', basic_auth=('elastic', 'npCore-5317'))
+config = configparser.ConfigParser()
+config.read('config.ini')
+
+es = Elasticsearch(config["ElasticSearch"]["url"], basic_auth=(config["ElasticSearch"]["uid"], config["ElasticSearch"]["pwd"]))
 
 @api.route('/es_count')
 class EsRoot(Resource):
