@@ -6,6 +6,8 @@ from elasticsearch import Elasticsearch
 import configparser
 import json
 import io
+import os
+
 
 
 app = Flask(__name__)
@@ -46,4 +48,7 @@ class EsResource(Resource):
 
 
 if __name__ == '__main__':
-    app.run(debug=True)
+    #app.run(debug=True)
+    HOST = os.environ.get('SERVER_HOST', 'localhost')
+    PORT = 8085
+    app.run(HOST, PORT)
