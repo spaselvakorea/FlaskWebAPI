@@ -441,6 +441,7 @@ class ReportUrlHunterInfo(Resource):
 
 if __name__ == '__main__':
     #app.run(debug=True)
-    HOST = os.environ.get('SERVER_HOST', 'localhost')
+    #HOST = os.environ.get('SERVER_HOST', '192.168.1.229')
+    HOST = '192.168.1.229'
     PORT = 8085
     app.run(HOST, PORT)
