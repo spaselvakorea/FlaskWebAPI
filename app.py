@@ -35,7 +35,7 @@ class EsRoot(Resource):
 @api.route('/es')
 class EsRoot(Resource):
     def get(self):
-        resp = es.search(index="*", query={"match_all": {}},size=100, from_=0)
+        resp = es.search(index="*", query={"match_all": {}},size=1000, sort= [{"reg_date":{"order": "desc"}}])
         return jsonify(resp['hits']['hits'])
 
 @api.route('/es/<id>')
