@@ -52,19 +52,20 @@ class EsResource(Resource):
         api.abort(403)
 
 # ===============DashBoard API=================================
+
+c_mysql_ip = config["MySQL"]["mysql_ip"]
+c_mysql_id = config["MySQL"]["mysql_id"]
+c_mysql_pw = config["MySQL"]["mysql_pw"]
+c_redis_ip = config["MySQL"]["redis_ip"]
+c_redis_pw = config["MySQL"]["redis_pw"]
+c_sitename = config["MySQL"]["sitename"]
+
 @api.route('/monitoring/count_info')
 class ReportCountInfo(Resource):
 
     def get(self):
         m_start_date = (datetime.now() - timedelta(days=1)).strftime('%Y-%m-%dT%H:%M:%S')
         m_end_date = datetime.now().strftime('%Y-%m-%dT%H:%M:%S')
-
-        m_mysql_ip = '125.7.199.176'
-        m_mysql_id = 'admin'
-        m_mysql_pw = 'password'
-
-        m_redis_ip = '125.7.199.174'
-        m_redis_pw = 'npCore-5317'
 
         m_es_filter_type_url = {'term': {'type.keyword': 'url'}}
         m_es_filter_type_file = {'term': {'type.keyword': 'file'}}
@@ -75,71 +76,76 @@ class ReportCountInfo(Resource):
         m_urlhunter_url_count = 0
         m_crawler_file_count = 0
 
-        resp_cnt = es.count(index="analysis*", query={
-            'bool': {
-                'filter': [
-                    m_es_filter_type_url,
-                    m_es_filter_gte,
-                    m_es_filter_lte
-                ]
-            }
-        })
-        m_crawler_url_count = resp_cnt['count']
-
-        resp_cnt = es.count(index="analysis*", query={
-            'bool': {
-                'filter': [
-                    m_es_filter_type_file,
-                    m_es_filter_gte,
-                    m_es_filter_lte
-                ]
-            }
-        })
-        m_crawler_file_count = resp_cnt['count']
-
-        # (1) MYSQL 연결
-        connection = mysql.connector.connect(host=m_mysql_ip, database='urlhunter_flask', user=m_mysql_id, password=m_mysql_pw)
-
-        with connection:
-            with connection.cursor(buffered=True) as cur:
-                cur.execute('SELECT count(*) FROM site_contents')
-                url_hunter_result = cur.fetchone()
-        connection.close()
-        m_urlhunter_url_count = url_hunter_result[0]
-
-        m_redis = redis.Redis(host=m_redis_ip, port=6379, password=m_redis_pw, charset="utf-8", decode_responses=True)
-
-        m_analysis_waiting_data_json = json.loads(m_redis.get('analysis_waiting_data'))
-        # {
-        #     "file_crawling_queue_waiting_count": 20778,
-        #     "file_crawling_queue_consuming_count": 2,
-        #     "url_crawling_queue_waiting_count": 434257,
-        #     "url_crawling_queue_consuming_count": 12,
-        #     "url_hunter_queue_waiting_count": 0,
-        #     "url_hunter_queue_consuming_count": 12
-        # }
-
         m_json = {}
-        m_json['total_url_count'] = m_crawler_url_count + \
-                                    m_urlhunter_url_count + \
-                                    int(m_analysis_waiting_data_json['url_crawling_queue_waiting_count']) + \
-                                    int(m_analysis_waiting_data_json['url_crawling_queue_consuming_count']) + \
-                                    int(m_analysis_waiting_data_json['url_hunter_queue_waiting_count']) + \
-                                    int(m_analysis_waiting_data_json['url_hunter_queue_consuming_count'])
 
-        m_json['total_file_count'] = m_crawler_file_count + \
-                                    int(m_analysis_waiting_data_json['file_crawling_queue_waiting_count']) + \
-                                    int(m_analysis_waiting_data_json['file_crawling_queue_consuming_count'])
+        try:
+            resp_cnt = es.count(index="analysis*", query={
+                'bool': {
+                    'filter': [
+                        m_es_filter_type_url,
+                        m_es_filter_gte,
+                        m_es_filter_lte
+                    ]
+                }
+            })
+            m_crawler_url_count = resp_cnt['count']
 
-        m_json['crawler_url_count'] = m_crawler_url_count
-        m_json['urlhunter_url_count'] = m_urlhunter_url_count
-        m_json['crawler_file_count'] = m_crawler_file_count
+            resp_cnt = es.count(index="analysis*", query={
+                'bool': {
+                    'filter': [
+                        m_es_filter_type_file,
+                        m_es_filter_gte,
+                        m_es_filter_lte
+                    ]
+                }
+            })
+            m_crawler_file_count = resp_cnt['count']
 
-        m_json['analysis_waiting_url_count'] = int(m_analysis_waiting_data_json['url_crawling_queue_waiting_count']) + int(m_analysis_waiting_data_json['url_hunter_queue_waiting_count'])
-        m_json['analysis_consuming_url_count'] = int(m_analysis_waiting_data_json['url_crawling_queue_consuming_count']) + int(m_analysis_waiting_data_json['url_hunter_queue_consuming_count'])
+            # (1) MYSQL 연결
+            connection = mysql.connector.connect(host=c_mysql_ip, database='urlhunter_flask', user=c_mysql_id, password=c_mysql_pw)
 
-        m_json['analysis_waiting_file_count'] = int(m_analysis_waiting_data_json['file_crawling_queue_waiting_count'])
-        m_json['analysis_consuming_file_count'] = int(m_analysis_waiting_data_json['file_crawling_queue_consuming_count'])
+            with connection:
+                with connection.cursor(buffered=True) as cur:
+                    cur.execute('SELECT count(*) FROM site_contents')
+                    url_hunter_result = cur.fetchone()
+            connection.close()
+            m_urlhunter_url_count = url_hunter_result[0]
+
+            m_redis = redis.Redis(host=c_redis_ip, port=6379, password=c_redis_pw, charset="utf-8", decode_responses=True)
+
+            m_analysis_waiting_data_json = json.loads(m_redis.get('analysis_waiting_data'))
+            # {
+            #     "file_crawling_queue_waiting_count": 20778,
+            #     "file_crawling_queue_consuming_count": 2,
+            #     "url_crawling_queue_waiting_count": 434257,
+            #     "url_crawling_queue_consuming_count": 12,
+            #     "url_hunter_queue_waiting_count": 0,
+            #     "url_hunter_queue_consuming_count": 12
+            # }
+
+
+            m_json['total_url_count'] = m_crawler_url_count + \
+                                        m_urlhunter_url_count + \
+                                        int(m_analysis_waiting_data_json['url_crawling_queue_waiting_count']) + \
+                                        int(m_analysis_waiting_data_json['url_crawling_queue_consuming_count']) + \
+                                        int(m_analysis_waiting_data_json['url_hunter_queue_waiting_count']) + \
+                                        int(m_analysis_waiting_data_json['url_hunter_queue_consuming_count'])
+
+            m_json['total_file_count'] = m_crawler_file_count + \
+                                        int(m_analysis_waiting_data_json['file_crawling_queue_waiting_count']) + \
+                                        int(m_analysis_waiting_data_json['file_crawling_queue_consuming_count'])
+
+            m_json['crawler_url_count'] = m_crawler_url_count
+            m_json['urlhunter_url_count'] = m_urlhunter_url_count
+            m_json['crawler_file_count'] = m_crawler_file_count
+
+            m_json['analysis_waiting_url_count'] = int(m_analysis_waiting_data_json['url_crawling_queue_waiting_count']) + int(m_analysis_waiting_data_json['url_hunter_queue_waiting_count'])
+            m_json['analysis_consuming_url_count'] = int(m_analysis_waiting_data_json['url_crawling_queue_consuming_count']) + int(m_analysis_waiting_data_json['url_hunter_queue_consuming_count'])
+
+            m_json['analysis_waiting_file_count'] = int(m_analysis_waiting_data_json['file_crawling_queue_waiting_count'])
+            m_json['analysis_consuming_file_count'] = int(m_analysis_waiting_data_json['file_crawling_queue_consuming_count'])
+        except Exception as ex:
+            print('error')
 
         return jsonify(m_json)
 
@@ -151,39 +157,40 @@ class ReportCountInfo(Resource):
 class ReportSystemInfo(Resource):
 
     def get(self):
-        m_redis_ip = '125.7.199.174'
-        m_redis_pw = 'npCore-5317'
-
-        m_redis = redis.Redis(host=m_redis_ip, port=6379, password=m_redis_pw, charset="utf-8", decode_responses=True)
-        m_resource_info = json.loads(m_redis.get('system_resource_monitoring_data'))
-        m_server_status = json.loads(m_redis.get('server_status_data'))
-
-        # {
-        #     "cpu_model_name": " Intel Xeon Processor (Cascadelake)",
-        #     "cpu_core": 1,
-        #     "cpu_per": 15.41,
-        #     "memory_total": 33672155136,
-        #     "memory_usage": 19651874816,
-        #     "memory_per": 58.36,
-        #     "disk_total": 311993479168,
-        #     "disk_usage": 111788941312,
-        #     "disk_per": 35.83,
-        #     "network_usage": 23007,
-        #     "network_per": 0.02,
-        #     "network_speed": "1000"
-        # }
-        # {
-        #     "url_crawler_status": "normal",
-        #     "file_crawler_status": "normal",
-        #     "url_hunter_status": "normal",
-        #     "zombiezero_status": "normal",
-        #     "file_ai_status": "normal",
-        #     "url_ai_status": "normal"
-        # }
 
         m_json = {}
-        m_json['system_resource_monitoring_data'] = m_resource_info
-        m_json['server_status_data'] = m_server_status
+        try:
+            m_redis = redis.Redis(host=c_redis_ip, port=6379, password=c_redis_pw, charset="utf-8", decode_responses=True)
+            m_resource_info = json.loads(m_redis.get('system_resource_monitoring_data'))
+            m_server_status = json.loads(m_redis.get('server_status_data'))
+
+            # {
+            #     "cpu_model_name": " Intel Xeon Processor (Cascadelake)",
+            #     "cpu_core": 1,
+            #     "cpu_per": 15.41,
+            #     "memory_total": 33672155136,
+            #     "memory_usage": 19651874816,
+            #     "memory_per": 58.36,
+            #     "disk_total": 311993479168,
+            #     "disk_usage": 111788941312,
+            #     "disk_per": 35.83,
+            #     "network_usage": 23007,
+            #     "network_per": 0.02,
+            #     "network_speed": "1000"
+            # }
+            # {
+            #     "url_crawler_status": "normal",
+            #     "file_crawler_status": "normal",
+            #     "url_hunter_status": "normal",
+            #     "zombiezero_status": "normal",
+            #     "file_ai_status": "normal",
+            #     "url_ai_status": "normal"
+            # }
+
+            m_json['system_resource_monitoring_data'] = m_resource_info
+            m_json['server_status_data'] = m_server_status
+        except:
+            print('error')
 
         return jsonify(m_json)
 
